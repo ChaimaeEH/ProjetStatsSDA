@@ -238,11 +238,42 @@ Heatmap(data_g_rats,
 heatMap sur les gènes 
 
 ```{r}
-#heatmap(abs(cor(data_g)), symm = TRUE)
+heatmap(abs(cor(data_g)), symm = TRUE)
 ```
 
 
-# Montrer que les données suivent une loi gaussienne. 
+# Sélection gènes selon critère de correlation
+
+```{r}
+library(dplyr)
+library(tidyr)
+cor_mat <- cor(data_g)
+cor_mat[!lower.tri(cor_mat)] <- NA # remove diagonal and redundant values
+gene_cor <- data.frame(cor_mat) %>%
+              rownames_to_column() %>%
+              gather(key="variable", value="correlation", -rowname) %>%
+              filter(abs(correlation) > 0.949)
+#gene_cor
+gene_cor <- data_frame(gene_cor)
+
+list_gene_core = c()
+for (ligne in 1:dim(gene_cor)[1]){
+  for (colonne in 1:(dim(gene_cor)[2]-1)){ # on ne considère pas la ligne de correlation
+    if (gene_cor[ligne,colonne] %in% list_gene_core == FALSE) list_gene_core <-c(list_gene_core, gene_cor[ligne,colonne])
+    }
+}
+#list_gene_core
+length(list_gene_core)
+
+# avec 0,9 on retrouve 585 variables 
+
+# extraction dans data_g les colonnes correspondantes
+
+data_g_0.9_cor <- data_g[,(colnames(data_g) %in% list_gene_core)]
+```
+
+
+# Vérification gènes suivant une loi gaussienne 
 
 ```{r}
 library(ggplot2)
@@ -288,10 +319,19 @@ cowplot::plot_grid(p1, p2) # pour avoir 2 courbes qui se génèrent en même tem
 
 ```{r}
 # récuperer maintenant la liste des gènes qui ont une pvalue > 0.05 et leur pvalue 
-pvalue_sup_0.05 <- list_pvalue_df[list_pvalue_df$list_pvalue>=0.63,]
+pvalue_sup_0.05 <- list_pvalue_df[list_pvalue_df$list_pvalue>=0.05,]
+# récuperer maintenant la liste des gènes qui ont une pvalue > 0.63 et leur pvalue
+pvalue_sup_0.63 <- list_pvalue_df[list_pvalue_df$list_pvalue>=0.63,]
 
-# recuperer uniquement les gènes dans data_g tel que leurs pvalue soit >0.05
+# recuperer uniquement les gènes dans data_g tel que leurs pvalue après un test de Shapiro soit >0.05
 data_g_0.05 <- data_g[,pvalue_sup_0.05$list_gene]
+# recuperer uniquement les gènes dans data_g tel que leurs pvalue après un test de Shapiro soit >0.63
+data_g_0.63 <- data_g[,pvalue_sup_0.63$list_gene]
+```
+
+## heatmap des 495 gènes sélectionnées 
+```{r}
+#heatmap(abs(cor(data_g_0.63)), symm = TRUE)
 ```
 
 
@@ -311,9 +351,9 @@ On explique Y (data_g) en fonction de Xtr : que des O pour le whitening tests
 Que faire ?
 
 
-# Construction de données à tester : Y (data_c + data_g)
+# Construction de données à tester : Y = data_g
 ```{r notre Y, données génétiques + les 10 mesures cliniques}
-Y = cbind(data_c, data_g)
+Y = data_g
 # et le scaler
 # notre but est de voir lesquels s'allument/s'éteignent en fonction des différents traitement testés
 Yscaled=scale(Y)
@@ -375,9 +415,9 @@ result
 # Essayer de réduire la taille des données Y en prenant que les gènes à valeurs gaussienne
 
 
-# Construction de données à tester : Y = data_g_0.05
+# Construction de données à tester : Y = data_g_0.63
 ```{r notre Y, données génétiques + les 10 mesures cliniques}
-Y = data_g_0.05
+Y = data_g_0.63
 # et le scaler
 # notre but est de voir lesquels s'allument/s'éteignent en fonction des différents traitement testés
 Yscaled=scale(Y)
@@ -436,8 +476,43 @@ result=whitening_choice(residuals,c("AR1","nonparam","ARMA"),pAR=1,qMA=1)
 result
 ```
 
+## Construction de données à tester : Y avec gènes sélectionnées par corrélation. 
 
+# Construction de données à tester : Y = data_g_0.9_cor
+```{r notre Y, données génétiques + les 10 mesures cliniques}
+Y = data_g_0.9_cor
+# et le scaler
+Yscaled=scale(Y)
+Y=Yscaled  
 
+Xtr = data_t[,2]  # Traitement
+
+# matrice de design
+
+X = model.matrix(lm(Y~ Xtr + 0 ))
+
+p <- ncol(X)
+n=nrow(X)
+q= dim(Y)[2]
+
+# Prendre les residus (E_hat)
+
+residuals=lm(as.matrix(Y)~X-1)$residuals 
+#residuals
+
+# Faire le test de whitening_test sur les résidus pour savoir si on a besoin de blanchir les données ou pas
+
+pvalue=whitening_test(residuals)
+pvalue
+# < 0.05 donc on ne peut pas rejetter H0, alors on ne pas peut rejeter la non independance entre les Ei
+# d'où on doit blanchir les données
+```
+
+# Choix de la méthode de blanchiement avec la fonction whitening_choice
+```{r}
+result=whitening_choice(residuals,c("AR1","nonparam","ARMA"),pAR=1,qMA=1)
+result
+```
 
 
 
