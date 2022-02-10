@@ -252,7 +252,7 @@ cor_mat[!lower.tri(cor_mat)] <- NA # remove diagonal and redundant values
 gene_cor <- data.frame(cor_mat) %>%
               rownames_to_column() %>%
               gather(key="variable", value="correlation", -rowname) %>%
-              filter(abs(correlation) > 0.949)
+              filter(abs(correlation) > 0.95)
 #gene_cor
 gene_cor <- data_frame(gene_cor)
 
@@ -265,11 +265,10 @@ for (ligne in 1:dim(gene_cor)[1]){
 #list_gene_core
 length(list_gene_core)
 
-# avec 0,9 on retrouve 585 variables 
 
 # extraction dans data_g les colonnes correspondantes
 
-data_g_0.9_cor <- data_g[,(colnames(data_g) %in% list_gene_core)]
+data_g_0.95_cor <- data_g[,(colnames(data_g) %in% list_gene_core)]
 ```
 
 
@@ -478,9 +477,9 @@ result
 
 ## Construction de données à tester : Y avec gènes sélectionnées par corrélation. 
 
-# Construction de données à tester : Y = data_g_0.9_cor
+# Construction de données à tester : Y = data_g_0.95_cor
 ```{r notre Y, données génétiques + les 10 mesures cliniques}
-Y = data_g_0.9_cor
+Y = data_g_0.95_cor
 # et le scaler
 Yscaled=scale(Y)
 Y=Yscaled  
