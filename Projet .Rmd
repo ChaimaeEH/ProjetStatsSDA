@@ -514,6 +514,65 @@ result
 ```
 
 
+```{r estimer square_rrot_inv_hat_Sigma}
+square_root_inv_hat_Sigma=whitening(residuals,"nonparam")
+```
+
+
+```{r}
+
+#require(doMC) # equivalent à library(doMC)
+#registerDoMC(cores=1)
+
+Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=50,parallel=FALSE,nb.cores=1)   
+```
+```{r}
+colnames(Frequencies)<-c('Gene','Dose_Temps_execution','frequency')
+Frequencies
+```
+
+```{r}
+#Frequencies$Names_of_X<-sub('X2','',Frequencies$Names_of_X)
+#Frequencies$Names_of_Y<-as.numeric(gsub('X','',gsub('\\.1$','',Frequencies$Names_of_Y)))
+
+data_genes_kept=Frequencies[Frequencies$frequency>=1,] # 452 lignes 
+```
+```{r}
+p<-ggplot(data_genes_kept,
+aes(x=Gene,y=Dose_Temps_execution,color=frequency))+
+geom_tile(size=0.75)+
+#scale_color_gradient2(midpoint=.99,mid ='orange')+
+theme_bw()+ylab('Dose_Temps_execution')+xlab('Gene')
+p
+# on peut se restreindre à une fréquence de selection de 1 si on veut parce qu'il y a déjà pas mal de monde avec une freq de 0.95
+```
+
+
+
+```{r}
+indices = which(Frequencies$frequency>=1)
+Yvec = as.numeric(Y%*%square_root_inv_hat_Sigma)
+Xvec = kronecker(t(square_root_inv_hat_Sigma), X)
+Xvec_sel = Xvec[, indices]
+B_sel_hat = solve(t(Xvec_sel)%*%Xvec_sel, t(Xvec_sel)%*%Yvec)
+p = ncol(X)
+q = ncol(Y)
+Frequencies$estim = rep(0, p*q)   
+Frequencies$estim[indices] = as.vector(B_sel_hat)
+```
+
+```{r}
+gr = ggplot(data=Frequencies[Frequencies$frequency>=1,],
+              aes(x=Gene,y=Dose_Temps_execution,color=estim))+ 
+              scale_color_gradient2(low="steelblue", mid="white",high="red")+
+              geom_point(size=2)+
+              theme_bw()+
+              ylab('Dose_Temps_execution')+
+              xlab('Gene')+
+              theme(axis.text.x = element_text(angle=90))
+
+gr    
+```
 
 
 
