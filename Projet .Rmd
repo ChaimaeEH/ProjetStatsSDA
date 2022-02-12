@@ -20,10 +20,7 @@ library(FactoMineR) # pour ACP
 library(factoextra) #pour extraire et visualiser les résultats issus de FactoMineR
 library(glue)  # pour jolie print
 library("corrplot") # pour les calculs de corrélations
-
-
 library(knitr) #pour avoir un format table dans les sor
-
 # regression generalisée
 library(glmnet)
 library(MultiVarSel)
@@ -43,14 +40,17 @@ http://mixomics.org/install/
 library(devtools)
 # install_github("mixOmicsTeam/mixOmics") 
 library(mixOmics)
-
 # Loaded mixOmics 6.19.1 --> succès du chargement de mixOmics
 ```
 
 
 - Chargement des données:
 ```{r}
+
+
 data(liver.toxicity)
+
+
 ```
 
 
@@ -67,11 +67,13 @@ Etude de toxicité hépatique sur 64 rats exposés à des doses non toxiques (50
 ```{r echo=FALSE}
 data_t = liver.toxicity$treatment 
 str(data_t)
-
+data_t$Dose.Group <- as.factor(data_t$Dose.Group)
+data_t$Time.Group <- as.factor(data_t$Time.Group)
+sapply(data_t, levels)
 # check des NA sur les traitement 
 nbre_NA = toString(as.numeric(sum(is.na(data_t))))
 cat("Nombre de NA:", nbre_NA)
-
+table(data_t$Dose.Group,data_t$Time.Group)
 ```
 
 
@@ -84,17 +86,13 @@ L'ARNm du foie a été extrait. Les données ont été normalisées et prétrait
 ```{r importation ded données d expression des gènes, echo=FALSE}
 # importation des données
 data_g = liver.toxicity$gene
-
 # check de dimensions
 nbre_rows = toString(nrow(data_g))
 nbre_cols = toString(ncol(data_g))
-
 # check des NA sur les genes
 nbre_NA = toString(as.numeric(sum(is.na(data_g))))
-
 # Affichage des 2 résultats précédents 
 print(glue("Dimensions: ({nbre_rows}, {nbre_cols})\n Nombre de NA: {nbre_NA}"))
-
 # Affichage du nombre de variables selon chaque type
 table(unlist(lapply(data_g, class)))
 # data_types(data_g)  # si on veut afficher l'histogramme associé
@@ -115,7 +113,6 @@ Dix mesures clinique chimiques de variables contenant des marqueurs de lésions 
 ```{r echo=FALSE}
 data_c = liver.toxicity$clinic 
 str(data_c)
-
 # check des NA
 nbre_NA = toString(as.numeric(sum(is.na(data_c))))
 cat("Nombre de NA:", nbre_NA)
@@ -132,7 +129,6 @@ donnees_tc = cbind.data.frame(data_t,data_c)
 res_pca<-PCA(donnees_tc[, -c(1)], graph=T, quali.sup = 1)  # quali.sup = 1
 # Valeur propre
 fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 50))
-
 # axe 1+2
 fviz_ellipses(res_pca,axes=c(1,2), habillage="Treatment.Group")
 #fviz_ellipses(res_pca,axes=c(1,2), habillage="Dose.Group")
@@ -152,7 +148,6 @@ corrplot(correlation,type = 'upper', order="hclust")
 
 ```{r heatmap correlations entre les données cliniques (version 1), echo=FALSE}
 # correlation = cor(data_c)   # est-ce qu'on doit normaliser les colonnes avant de faire le calcul de corrélation? (je ne pense pas, mais je ne suis pas sûre )
-
 # 1ère visualisation possible
 #heatmap(abs(correlation),symm=T,Colv = NA)              # obligé de prendre abs? 
 # # scale = "row" by default
@@ -161,9 +156,7 @@ corrplot(correlation,type = 'upper', order="hclust")
 ```{r heatmap correlations entre les données cliniques (version 2), echo=FALSE}
 #install.packages("pheatmap") # p for pretty
 library("pheatmap")
-
 correlation = cor(data_c)
-
 # 2ème visualisation possible (je ne sais pas pourquoi ne s'affiche plus dans Rpres)
 pheatmap(abs(correlation),    
          cutree_cols = 2,   # couper en 2 clusters
@@ -175,25 +168,19 @@ pheatmap(abs(correlation),
 
 
 ```{r heatmap correlations sur données cliniques entre les rats, echo=FALSE, fig.dim=c(16, 13)}
-
 #if (!require("BiocManager", quietly = TRUE))
 #install.packages("BiocManager")
 #BiocManager::install("ComplexHeatmap")
-
 library(ComplexHeatmap)
 # NE S AFFICHE PLUS CORRECTEMENT SUR LE RPRES
 # prendre la matrice des données qu'on veut (besoin pour heatmap)
 # prendre la transposée (car j'ai trouvé ca plus pratique pour la visualisation des rats), mais on paut changer si vous n'etes pas d'accord
 data_c_rats = t(as.matrix(scale(data_c))) # prendre scale(data_c) pour normaliser chaque indicateur clinique sur l'ensemble des rats
-
-
 # créer la top annotation
 ha = HeatmapAnnotation(Dose = data_t$Dose.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
                        Time = data_t$Time.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
                        simple_anno_size = unit(1, "cm")
 )
-
-
 Heatmap(data_c_rats,                                    # (s'affiche mal dans Rpres)
         cluster_rows = F,
         row_names_gp = gpar(fontsize = 20), 
@@ -212,16 +199,12 @@ Heatmap(data_c_rats,                                    # (s'affiche mal dans Rp
 ```{r heatmap correlations sur expression génétique différentielle entre les rats, fig.dim = c(15, 8), echo=FALSE}
 # meme code que chunk précédent, mais appliqué à data_g et enlever l'affichage des lignes
 data_g_rats = t(as.matrix(scale(data_g))) # prendre scale(data_c) pour normaliser chaque indicateur clinique sur l'ensemble des rats
-
-
 # créer la top annotation
 ha = HeatmapAnnotation(
     Dose = data_t$Dose.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
     Time = data_t$Time.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
     simple_anno_size = unit(1, "cm")
 )
-
-
 Heatmap(data_g_rats,                                    
         cluster_rows = F,
         row_names_gp = gpar(fontsize = 0),   # j'essaye de na pas afficher le nom des raws
@@ -255,7 +238,6 @@ gene_cor <- data.frame(cor_mat) %>%
               filter(abs(correlation) > 0.95)
 #gene_cor
 gene_cor <- data_frame(gene_cor)
-
 list_gene_core = c()
 for (ligne in 1:dim(gene_cor)[1]){
   for (colonne in 1:(dim(gene_cor)[2]-1)){ # on ne considère pas la ligne de correlation
@@ -264,10 +246,7 @@ for (ligne in 1:dim(gene_cor)[1]){
 }
 #list_gene_core
 length(list_gene_core)
-
-
 # extraction dans data_g les colonnes correspondantes
-
 data_g_0.95_cor <- data_g[,(colnames(data_g) %in% list_gene_core)]
 ```
 
@@ -277,15 +256,11 @@ data_g_0.95_cor <- data_g[,(colnames(data_g) %in% list_gene_core)]
 ```{r}
 library(ggplot2)
 # Histogramme basique
-
 # p value en fonction numero du gène (ou juste de 1 à 3116)
 # tracer une ligne à 0,05. 
 # H0 : Pas gaussien 
 # H1 : gaussien 
 # On veut que > 0.05 --> On rejette H0 
-
-
-
 # liste des pvaleur pour chaque gene avec le test de Shapiro
 list_pvalue = c()
 list_gene = c()
@@ -293,27 +268,19 @@ for (i in 1:dim(data_g)[2]){
   list_pvalue <- c(list_pvalue, shapiro.test(data_g[,i])$p.value)
   list_gene <- c(list_gene,i)
 }
-
 # Visualiser sous al forme d'un plot pour voir la répartition des pvalue en fonction des gènes
-
 list_pvalue_df <-  data.frame(list_gene,list_pvalue) # pour utiliser ggplot2, il nous faut des df
-
 library(ggplot2)
-
 p1 <- ggplot(list_pvalue_df) + # Données
   aes(x = list_gene, y = list_pvalue) + # Variables à représenter (esthétiques)
   geom_point() + # Représentation
   geom_hline(yintercept = 0.05, color = "red", linetype = "dashed")
-
 # Visualiser sous la forme d'un histogramme pour avoir le nombre de variables gaussiennes 
-
 p2 <- ggplot(list_pvalue_df) + # Données
   aes(x = list_pvalue) + # Variables à représenter (esthétiques)
   geom_histogram(binwidth=0.05,fill = "grey", col = "black") + # Représentation
   geom_vline(xintercept = 0.05, color = "red", linetype = "dashed")
-
 cowplot::plot_grid(p1, p2) # pour avoir 2 courbes qui se génèrent en même temps 
-
 ```
 
 ```{r}
@@ -321,7 +288,6 @@ cowplot::plot_grid(p1, p2) # pour avoir 2 courbes qui se génèrent en même tem
 pvalue_sup_0.05 <- list_pvalue_df[list_pvalue_df$list_pvalue>=0.05,]
 # récuperer maintenant la liste des gènes qui ont une pvalue > 0.63 et leur pvalue
 pvalue_sup_0.63 <- list_pvalue_df[list_pvalue_df$list_pvalue>=0.63,]
-
 # recuperer uniquement les gènes dans data_g tel que leurs pvalue après un test de Shapiro soit >0.05
 data_g_0.05 <- data_g[,pvalue_sup_0.05$list_gene]
 # recuperer uniquement les gènes dans data_g tel que leurs pvalue après un test de Shapiro soit >0.63
@@ -362,12 +328,9 @@ Y=Yscaled  # à vérifier que je n'ai pas aussi scalé avant lors de mon travail
 ```{r }
 Xd = data_t[,3]  # Dose 
 Xd = as.factor(Xd)
-
 Xt = data_t[,4]  # Time
 Xt = as.factor(Xt)
-
 Xtr = data_t[,2]  # Traitement
-
 table(Xd, Xt)
 ```
 
@@ -375,7 +338,6 @@ table(Xd, Xt)
 ```{r}
 #X = model.matrix(lm(Y~ Xd + Xt -1))
 X = model.matrix(lm(Y~ Xtr + 0 ))
-
 p <- ncol(X)
 p #on obtient 16 
 n=nrow(X)
@@ -398,7 +360,6 @@ Récupérer les résidus et regarder si il y a des dépendances entre les colonn
 ```{r}
 # H0 : les Ei sont indépendants
 # H1 : les Ei ne sont pas indépendants
-
 pvalue=whitening_test(residuals)
 pvalue
 # < 0.05 donc on ne peut pas rejetter H0, alors on ne pas peut rejeter la non independance entre les Ei
@@ -426,12 +387,9 @@ Y=Yscaled  # à vérifier que je n'ai pas aussi scalé avant lors de mon travail
 ```{r }
 Xd = data_t[,3]  # Dose 
 Xd = as.factor(Xd)
-
 Xt = data_t[,4]  # Time
 Xt = as.factor(Xt)
-
 Xtr = data_t[,2]  # Traitement
-
 table(Xd, Xt)
 ```
 
@@ -439,7 +397,6 @@ table(Xd, Xt)
 ```{r}
 #X = model.matrix(lm(Y~ Xd + Xt -1))
 X = model.matrix(lm(Y~ Xtr + 0 ))
-
 p <- ncol(X)
 p #on obtient 16 
 n=nrow(X)
@@ -462,7 +419,6 @@ Récupérer les résidus et regarder si il y a des dépendances entre les colonn
 ```{r}
 # H0 : les Ei sont indépendants
 # H1 : les Ei ne sont pas indépendants
-
 pvalue=whitening_test(residuals)
 pvalue
 # < 0.05 donc on ne peut pas rejetter H0, alors on ne pas peut rejeter la non independance entre les Ei
@@ -483,24 +439,16 @@ Y = data_g_0.95_cor
 # et le scaler
 Yscaled=scale(Y)
 Y=Yscaled  
-
 Xtr = data_t[,2]  # Traitement
-
 # matrice de design
-
 X = model.matrix(lm(Y~ Xtr + 0 ))
-
 p <- ncol(X)
 n=nrow(X)
 q= dim(Y)[2]
-
 # Prendre les residus (E_hat)
-
 residuals=lm(as.matrix(Y)~X-1)$residuals 
 #residuals
-
 # Faire le test de whitening_test sur les résidus pour savoir si on a besoin de blanchir les données ou pas
-
 pvalue=whitening_test(residuals)
 pvalue
 # < 0.05 donc on ne peut pas rejetter H0, alors on ne pas peut rejeter la non independance entre les Ei
@@ -514,43 +462,58 @@ result
 ```
 
 
+# Calcul de la matrice sigma chapeau -1/2
+
 ```{r estimer square_rrot_inv_hat_Sigma}
 square_root_inv_hat_Sigma=whitening(residuals,"nonparam")
 ```
 
 
 ```{r}
-
-#require(doMC) # equivalent à library(doMC)
-#registerDoMC(cores=1)
-
-Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=50,parallel=FALSE,nb.cores=1)   
+require(doMC) # equivalent à library(doMC)
+registerDoMC(cores=4)
+Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=100,parallel=TRUE,nb.cores=4)   
 ```
 ```{r}
 colnames(Frequencies)<-c('Gene','Dose_Temps_execution','frequency')
 Frequencies
 ```
 
+Tracer le graphique pour déterminer le décrochage 
+
+```{r}
+plot(sort(Frequencies$frequency,decreasing = T),type='s')
+```
+
+
 ```{r}
 #Frequencies$Names_of_X<-sub('X2','',Frequencies$Names_of_X)
 #Frequencies$Names_of_Y<-as.numeric(gsub('X','',gsub('\\.1$','',Frequencies$Names_of_Y)))
+data_genes_kept=Frequencies[Frequencies$frequency>=0.99,] # 108 lignes 
 
-data_genes_kept=Frequencies[Frequencies$frequency>=1,] # 452 lignes 
+nombre_gene = unique(data_genes_kept)
+unique_gene = unique(data_genes_kept$Gene)
+unique_gene # 149 gènes 
+nombre_gene
 ```
+
+Graphe des fréquences
 ```{r}
 p<-ggplot(data_genes_kept,
 aes(x=Gene,y=Dose_Temps_execution,color=frequency))+
-geom_tile(size=0.75)+
-#scale_color_gradient2(midpoint=.99,mid ='orange')+
-theme_bw()+ylab('Dose_Temps_execution')+xlab('Gene')
+    geom_tile(size=0.75) +
+    scale_color_gradient2(midpoint=.99,mid ='orange')+
+    theme_bw()+
+    ylab('Dose_Temps_execution')+
+    xlab('Gene')
 p
 # on peut se restreindre à une fréquence de selection de 1 si on veut parce qu'il y a déjà pas mal de monde avec une freq de 0.95
 ```
 
 
-
 ```{r}
-indices = which(Frequencies$frequency>=1)
+indices = which(Frequencies$frequency>=0.99)
+
 Yvec = as.numeric(Y%*%square_root_inv_hat_Sigma)
 Xvec = kronecker(t(square_root_inv_hat_Sigma), X)
 Xvec_sel = Xvec[, indices]
@@ -561,8 +524,9 @@ Frequencies$estim = rep(0, p*q)
 Frequencies$estim[indices] = as.vector(B_sel_hat)
 ```
 
+# graphe de Boulier 
 ```{r}
-gr = ggplot(data=Frequencies[Frequencies$frequency>=1,],
+gr = ggplot(data=Frequencies[Frequencies$frequency>=0.99,],
               aes(x=Gene,y=Dose_Temps_execution,color=estim))+ 
               scale_color_gradient2(low="steelblue", mid="white",high="red")+
               geom_point(size=2)+
@@ -570,11 +534,98 @@ gr = ggplot(data=Frequencies[Frequencies$frequency>=1,],
               ylab('Dose_Temps_execution')+
               xlab('Gene')+
               theme(axis.text.x = element_text(angle=90))
-
 gr    
 ```
 
+# Régression linéaire sur les gènes sélectionnés
 
+```{r}
+# data_g réduit 
+data_g_reduit = data_g[,unique_gene]
+```
+
+
+```{r}
+
+# acp
+res_pca<-PCA(data_g_reduit, graph=T, quali.sup = 1)  # quali.sup = 1
+# Valeur propre
+fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 50))
+
+#correlation
+#install.packages("pheatmap") # p for pretty
+library("pheatmap")
+correlation = cor(data_g_reduit)
+# 2ème visualisation possible (je ne sais pas pourquoi ne s'affiche plus dans Rpres)
+pheatmap(abs(correlation),    
+         cutree_cols = 2,   # couper en 2 clusters
+         cluster_rows = F, 
+         main = "Corrélations des 10 indicateurs\n de lésions hépatiquesles (mesures cliniques) ")
+
+# graphe des individus et des variables avec 
+
+```
+
+Plus jolie ACP
+```{r}
+fviz_pca_biplot(res_pca, 
+                # Colueur de remplissage des individdus par groupes
+                geom.ind = "point",
+                pointshape = 21,
+                pointsize = 2.5,
+                fill.ind = data_t$Dose.Group,
+                col.ind = data_t$Time.Group,
+                # Colorer les variables par groupes
+                #col.var = factor(c("sepal", "sepal", "petal", "petal")),
+                
+                legend.title = list(fill = "Dose", color = "Time"),
+                repel = TRUE        # Evite le chévauchement du texte
+             )+
+  ggpubr::fill_palette("jco")+      # Couleur des individus
+  ggpubr::color_palette("npg")
+```
+
+
+# correlation représentation 
+```{r}
+data_g_reduit_matrix = t(as.matrix(data_g_reduit)) # prendre scale(data_c) pour normaliser chaque indicateur clinique sur l'ensemble des rats
+# créer la top annotation
+ha = HeatmapAnnotation(
+    Dose = data_t$Dose.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
+    Time = data_t$Time.Group,              # éventuellement à convertir en facteur (numérique pour le moment)
+    simple_anno_size = unit(1, "cm")
+)
+Heatmap(data_g_reduit_matrix, 
+        cluster_rows = T,
+        #row_names_gp = gpar(fontsize = 0),   # j'essaye de na pas afficher le nom des raws
+        
+        row_km = 2,
+        row_names_side = c("right", "left"),
+        row_names_max_width = unit(6, "cm"),
+        row_names_gp = gpar(fontsize = 12),
+        row_names_rot = 0,
+        row_names_centered = FALSE,
+        
+        column_names_side = "top",
+        column_names_gp = gpar(fontsize = 10),
+        column_km = 3,
+        column_gap = unit(2, "mm"),
+        border = TRUE,
+        show_column_names = T,
+        show_row_names = TRUE,
+        top_annotation = ha,   #  k-means partitioning along the columns
+        column_title = "Clustering (K-means) des rats selon leur expression génétique différentielle\n et comparaison au traitement recu", 
+        column_title_gp = gpar(fontsize = 15, fontface = "bold")) 
+```
+
+
+```{r}
+#Puis estimation des coefficients avec les variables selectionnes uniquement
+
+res=glm(Y[,unique_gene]~X+0)
+summary(res)
+
+```
 
 
 
