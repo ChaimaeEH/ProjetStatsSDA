@@ -130,15 +130,40 @@ res_pca<-PCA(donnees_tc[, -c(1)], graph=T, quali.sup = 1)  # quali.sup = 1
 # Valeur propre
 fviz_eig(res_pca, addlabels = TRUE, ylim = c(0, 50))
 # axe 1+2
-fviz_ellipses(res_pca,axes=c(1,2), habillage="Treatment.Group")
-#fviz_ellipses(res_pca,axes=c(1,2), habillage="Dose.Group")
-#fviz_ellipses(res_pca,axes=c(1,2), habillage="Time.Group")
+#fviz_ellipses(res_pca,axes=c(1,2), habillage="Treatment.Group")
+fviz_ellipses(res_pca,axes=c(1,2), habillage="Dose.Group",addEllipses = F,geom = c("point"))
+fviz_ellipses(res_pca,axes=c(1,2), habillage="Time.Group")
 # correlation et heatmap}
 correlation = cor(data_c)
 kable(correlation, digits = 2)
 #corrplot(correlation,method = "color",type = 'upper', order="hclust")
 corrplot(correlation,type = 'upper', order="hclust")
 #corrplot(correlation,type = 'upper')
+
+fviz_pca_ind(res_pca,
+             geom.ind = "point", # Montre les points seulement (mais pas le "text")
+             shape.ind = data_t$Time.Group, # colorer by groups
+             habillage = data_t$Dose.Group,
+             palette = c("#00AFBB", "#E7B800", "#FC4E07", "purple"),
+             addEllipses = FALSE, # Ellipses de concentration
+             legend.title = "Time"
+             )
+
+fviz_pca_biplot(res_pca, 
+                # Colueur de remplissage des individdus par groupes
+                geom.ind = "point",
+                pointshape = 21,
+                pointsize = 2.5,
+                fill.ind = data_t$Dose.Group,
+                col.ind = data_t$Time.Group,
+                # Colorer les variables par groupes
+                #col.var = factor(c("sepal", "sepal", "petal", "petal")),
+                
+                legend.title = list(fill = "Dose", color = "Time"),
+                repel = TRUE        # Evite le chévauchement du texte
+             )+
+  ggpubr::fill_palette("jco")+      # Couleur des individus
+  ggpubr::color_palette("npg")
 ```
 
 
@@ -147,7 +172,7 @@ corrplot(correlation,type = 'upper', order="hclust")
 ## Analyse descriptive heatmap entre données cliniques
 
 ```{r heatmap correlations entre les données cliniques (version 1), echo=FALSE}
-# correlation = cor(data_c)   # est-ce qu'on doit normaliser les colonnes avant de faire le calcul de corrélation? (je ne pense pas, mais je ne suis pas sûre )
+#correlation = cor(data_c)   # est-ce qu'on doit normaliser les colonnes avant de faire le calcul de corrélation? (je ne pense pas, mais je ne suis pas sûre )
 # 1ère visualisation possible
 #heatmap(abs(correlation),symm=T,Colv = NA)              # obligé de prendre abs? 
 # # scale = "row" by default
@@ -183,15 +208,22 @@ ha = HeatmapAnnotation(Dose = data_t$Dose.Group,              # éventuellement 
 )
 Heatmap(data_c_rats,                                    # (s'affiche mal dans Rpres)
         cluster_rows = F,
-        row_names_gp = gpar(fontsize = 20), 
+        row_names_gp = gpar(fontsize = 12), 
+        row_km = 3,
+        row_names_side = c("right", "left"),
+        row_names_max_width = unit(6, "cm"),
+        row_names_rot = 0,
+        row_names_centered = FALSE,
+        
+        
         column_names_side = "top",
-        column_names_gp = gpar(fontsize = 15),
+        column_names_gp = gpar(fontsize = 12),
         column_km = 3,
         column_gap = unit(2, "mm"),
         border = TRUE,
         top_annotation = ha,   #  k-means partitioning along the columns
         column_title = "Clustering (K-means) des rats selon leur profil clinique\n et comparaison au traitement recu", 
-        column_title_gp = gpar(fontsize = 25, fontface = "bold")) 
+        column_title_gp = gpar(fontsize = 12, fontface = "bold")) 
 ```
 
 ## Analyse descriptive heatmap sur expression génétique différentielle et k-means des rats
@@ -222,6 +254,12 @@ heatMap sur les gènes
 
 ```{r}
 heatmap(abs(cor(data_g)), symm = TRUE)
+```
+
+ACP de tous les gènes pour montrer que besoin de faire une sélection de variables 
+
+```{r}
+PCA(data_g)
 ```
 
 
@@ -281,6 +319,8 @@ p2 <- ggplot(list_pvalue_df) + # Données
   geom_histogram(binwidth=0.05,fill = "grey", col = "black") + # Représentation
   geom_vline(xintercept = 0.05, color = "red", linetype = "dashed")
 cowplot::plot_grid(p1, p2) # pour avoir 2 courbes qui se génèrent en même temps 
+
+
 ```
 
 ```{r}
@@ -336,14 +376,14 @@ table(Xd, Xt)
 
 # matrice de design
 ```{r}
-#X = model.matrix(lm(Y~ Xd + Xt -1))
-X = model.matrix(lm(Y~ Xtr + 0 ))
+X = model.matrix(lm(Y~ Xd + Xt -1))
+#X = model.matrix(lm(Y~ Xtr + 0 ))
 p <- ncol(X)
-p #on obtient 16 
+p #on obtient 7 
 n=nrow(X)
 n  #64
 q= dim(Y)[2]
-q # 3126 variables
+q # 3116 variables
 ```
 
 
@@ -380,6 +420,7 @@ result
 Y = data_g_0.63
 # et le scaler
 # notre but est de voir lesquels s'allument/s'éteignent en fonction des différents traitement testés
+
 Yscaled=scale(Y)
 Y=Yscaled  # à vérifier que je n'ai pas aussi scalé avant lors de mon travail sur heatmaps
 ```
@@ -395,14 +436,14 @@ table(Xd, Xt)
 
 # matrice de design
 ```{r}
-#X = model.matrix(lm(Y~ Xd + Xt -1))
-X = model.matrix(lm(Y~ Xtr + 0 ))
+X = model.matrix(lm(Y~ Xd*Xt -1))
+#X = model.matrix(lm(Y~ Xtr + 0 ))
 p <- ncol(X)
 p #on obtient 16 
 n=nrow(X)
 n  #64
 q= dim(Y)[2]
-q # 1691 variables
+q # 454 variables
 ```
 
 
@@ -472,8 +513,12 @@ square_root_inv_hat_Sigma=whitening(residuals,"nonparam")
 ```{r}
 require(doMC) # equivalent à library(doMC)
 registerDoMC(cores=4)
-Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=100,parallel=TRUE,nb.cores=4)   
+#Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=100,parallel=TRUE,nb.cores=4)
+Frequencies_vieux = Frequencies
+Frequencies=variable_selection(Y,X,square_root_inv_hat_Sigma,nb_repli=100,parallel=TRUE,nb.cores=4)
 ```
+
+
 ```{r}
 colnames(Frequencies)<-c('Gene','Dose_Temps_execution','frequency')
 Frequencies
@@ -493,8 +538,11 @@ data_genes_kept=Frequencies[Frequencies$frequency>=0.99,] # 108 lignes
 
 nombre_gene = unique(data_genes_kept)
 unique_gene = unique(data_genes_kept$Gene)
-unique_gene # 149 gènes 
-nombre_gene
+nombre_gene # 43 gènes 
+unique_gene # 40 gènes 
+
+A <- data_gID[unique_gene,]
+
 ```
 
 Graphe des fréquences
@@ -533,7 +581,8 @@ gr = ggplot(data=Frequencies[Frequencies$frequency>=0.99,],
               theme_bw()+
               ylab('Dose_Temps_execution')+
               xlab('Gene')+
-              theme(axis.text.x = element_text(angle=90))
+              theme(axis.text.x = element_text(angle=90))+
+              labs(title='Graphe de Boulier pour les 40 gènes sélectionnés')
 gr    
 ```
 
@@ -586,6 +635,19 @@ fviz_pca_biplot(res_pca,
 ```
 
 
+ACP avec variables issues de gènes 
+
+```{r}
+
+gene_sel_dose_time = cbind(data_g_reduit,as.numeric(data_t$Dose.Group),as.numeric(data_t$Time.Group))
+names(gene_sel_dose_time)[names(gene_sel_dose_time) == "as.numeric(data_t$Dose.Group)"] <- "Dose"
+names(gene_sel_dose_time)[names(gene_sel_dose_time) == "as.numeric(data_t$Time.Group)"] <- "Time"
+res.pca_2 <- PCA(gene_sel_dose_time)
+
+
+```
+
+
 # correlation représentation 
 ```{r}
 data_g_reduit_matrix = t(as.matrix(data_g_reduit)) # prendre scale(data_c) pour normaliser chaque indicateur clinique sur l'ensemble des rats
@@ -602,12 +664,12 @@ Heatmap(data_g_reduit_matrix,
         row_km = 2,
         row_names_side = c("right", "left"),
         row_names_max_width = unit(6, "cm"),
-        row_names_gp = gpar(fontsize = 12),
+        row_names_gp = gpar(fontsize = 9),
         row_names_rot = 0,
         row_names_centered = FALSE,
         
         column_names_side = "top",
-        column_names_gp = gpar(fontsize = 10),
+        column_names_gp = gpar(fontsize = 9),
         column_km = 3,
         column_gap = unit(2, "mm"),
         border = TRUE,
@@ -618,12 +680,15 @@ Heatmap(data_g_reduit_matrix,
         column_title_gp = gpar(fontsize = 15, fontface = "bold")) 
 ```
 
+Inutile : à enlever 
 
 ```{r}
 #Puis estimation des coefficients avec les variables selectionnes uniquement
 
-res=glm(Y[,unique_gene]~X+0)
+res=lm(Y[,unique_gene]~X+0)
 summary(res)
+
+anova(res)
 
 ```
 
